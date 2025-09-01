@@ -4,7 +4,9 @@ import "firebase/firestore";
 import "firebase/storage";
 import firebaseConfig from "./config";
 
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.firestore();
 const auth = firebase.auth();
 const provider = new firebase.auth.GoogleAuthProvider();
