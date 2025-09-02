@@ -1,0 +1,80 @@
+
+
+import { initializeApp, getApps } from "firebase/app";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
+import firebaseConfig from "./config";
+
+const hasConfig = Boolean(
+  firebaseConfig &&
+  firebaseConfig.apiKey &&
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId
+);
+
+let app, db, auth, provider, storage;
+
+if (hasConfig) {
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApps()[0];
+  }
+  db = getFirestore(app);
+  auth = getAuth(app);
+  provider = new GoogleAuthProvider();
+  storage = getStorage(app);
+} else {
+  // Graceful no-Firebase mode so the app can render without crashing
+  // Articles will not load and sign-in will be disabled until env vars are set
+  // See App logs for details
+  // eslint-disable-next-line no-console
+  console.warn("Firebase environment variables are missing. UI will run in read-only demo mode.");
+
+  db = {
+    collection() {
+      return {
+        add: async () => {},
+        orderBy() {
+          return { onSnapshot: () => {} };
+        },
+        doc() {
+          return { update: async () => {} };
+        },
+      };
+    },
+  };
+
+  auth = {
+    onAuthStateChanged(cb) {
+      if (typeof cb === "function") cb(null);
+    },
+    signInWithPopup: async () => {
+      throw new Error("Firebase not configured. Please set REACT_APP_FIREBASE_* env vars in project settings.");
+    },
+    signOut: async () => {},
+  };
+
+  provider = {};
+
+  storage = {
+    ref() {
+      return {
+        put() {
+          return {
+            on(_evt, _progress, onError) {
+              if (typeof onError === "function") {
+                onError(new Error("Firebase not configured. Uploads disabled."));
+              }
+            },
+            snapshot: { ref: { getDownloadURL: async () => "" } },
+          };
+        },
+      };
+    },
+  };
+}
+
+export { auth, provider, storage };
+export default db;
